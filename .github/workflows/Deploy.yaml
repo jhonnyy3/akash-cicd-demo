@@ -31,7 +31,7 @@ jobs:
         run: |
           curl -LO https://github.com/ovrclk/akash/releases/download/v0.18.0/akash_0.18.0_linux_amd64.zip
           unzip akash_0.18.0_linux_amd64.zip
-          sudo mv akash_0.18.0_linux_amd64/akash /usr/local/bin/
+          sudo mv akash /usr/local/bin/
           akash version
 
       - name: Deploy to Akash
@@ -40,19 +40,18 @@ jobs:
           AKASH_WALLET_MNEMONIC: ${{ secrets.AKASH_WALLET_MNEMONIC }}
         run: |
           # Restore wallet from mnemonic
-          echo "$AKASH_WALLET_MNEMONIC" | akash keys add "$AKASH_WALLET_NAME" --recover --keyring-backend test
+          echo "$AKASH_WALLET_MNEMONIC" | akash keys restore "$AKASH_WALLET_NAME"
 
           # Check recovered address (optional)
-          AKASH_ADDR=$(akash keys show "$AKASH_WALLET_NAME" -a --keyring-backend test)
+          AKASH_ADDR=$(akash keys show "$AKASH_WALLET_NAME" -a)
           echo "Recovered Wallet Address: $AKASH_ADDR"
 
           # Generate and create certificate
-          akash tx cert generate --keyring-backend test
+          akash tx cert generate
           akash tx cert create \
             --from "$AKASH_WALLET_NAME" \
             --chain-id akashnet-2 \
             --node https://rpc.akash.forbole.com:443 \
-            --keyring-backend test \
             --yes
 
           # Deploy using deploy.yaml
@@ -60,5 +59,4 @@ jobs:
             --from "$AKASH_WALLET_NAME" \
             --chain-id akashnet-2 \
             --node https://rpc.akash.forbole.com:443 \
-            --keyring-backend test \
             --yes
