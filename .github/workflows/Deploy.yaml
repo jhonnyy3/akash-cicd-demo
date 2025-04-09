@@ -1,41 +1,47 @@
-name: CI/CD to Akash
+name: Build & Deploy to Akash
 
 on:
   push:
-    branches: [main]
+    branches:
+      - master  # or 'main' if that's your default
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v2
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Log in to DockerHub
-        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-
-      - name: Build and Push Docker Image
+      - name: Build Docker Image
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/akash-cicd-demo:latest .
+
+      - name: Push Docker Image
+        run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/akash-cicd-demo:latest
 
       - name: Install Akash CLI
         run: |
-          curl -s https://raw.githubusercontent.com/akash-network/akash/master/godownloader.sh | bash
-          sudo mv ./bin/akash /usr/local/bin
+          curl -s https://raw.githubusercontent.com/ovrclk/akash/master/godownloader.sh | bash
+          sudo mv akash /usr/local/bin/
 
       - name: Deploy to Akash
+        env:
+          AKASH_WALLET_NAME: ${{ secrets.AKASH_WALLET_NAME }}
+          AKASH_WALLET_MNEMONIC: ${{ secrets.AKASH_WALLET_MNEMONIC }}
         run: |
-          echo "${{ secrets.AKASH_KEY_JSON }}" > key.json
-          echo "${{ secrets.AKASH_PASSPHRASE }}" > pass.txt
-
-          akash keys import github-akash key.json < pass.txt
-          akash tx deployment create akash.yaml --from github-akash \
-            --chain-id ${{ secrets.AKASH_CHAIN_ID }} \
-            --node ${{ secrets.AKASH_NODE }} \
-            --gas auto --gas-adjustment 1.5 --yes \
-            --keyring-backend file
-
+          echo "$AKASH_WALLET_MNEMONIC" | akash keys add $AKASH_WALLET_NAME --recover --keyring-backend test
+          
+          akash tx deployment create deploy.yaml \
+            --from $AKASH_WALLET_NAME \
+            --node https://rpc.akash.forbole.com:443 \
+            --chain-id akashnet-2 \
+            --keyring-backend test \
+            --yes
