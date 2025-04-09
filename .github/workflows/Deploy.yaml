@@ -40,23 +40,25 @@ jobs:
           AKASH_WALLET_MNEMONIC: ${{ secrets.AKASH_WALLET_MNEMONIC }}
         run: |
           # Restore wallet from mnemonic
-          echo "$AKASH_WALLET_MNEMONIC" | akash keys restore $AKASH_WALLET_NAME
+          echo "$AKASH_WALLET_MNEMONIC" | akash keys add "$AKASH_WALLET_NAME" --recover --keyring-backend test
 
-          # Check address (optional)
-          AKASH_ADDR=$(akash keys show $AKASH_WALLET_NAME -a)
+          # Check recovered address (optional)
+          AKASH_ADDR=$(akash keys show "$AKASH_WALLET_NAME" -a --keyring-backend test)
           echo "Recovered Wallet Address: $AKASH_ADDR"
 
           # Generate and create certificate
-          akash tx cert generate
+          akash tx cert generate --keyring-backend test
           akash tx cert create \
-            --from $AKASH_WALLET_NAME \
+            --from "$AKASH_WALLET_NAME" \
             --chain-id akashnet-2 \
             --node https://rpc.akash.forbole.com:443 \
+            --keyring-backend test \
             --yes
 
           # Deploy using deploy.yaml
           akash tx deployment create deploy.yaml \
-            --from $AKASH_WALLET_NAME \
+            --from "$AKASH_WALLET_NAME" \
             --chain-id akashnet-2 \
             --node https://rpc.akash.forbole.com:443 \
+            --keyring-backend test \
             --yes
