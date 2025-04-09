@@ -3,7 +3,7 @@ name: Build & Deploy to Akash
 on:
   push:
     branches:
-      - main  # Change to master if your default branch is master
+      - master  # change to 'main' if that's your default branch
 
 jobs:
   build-and-deploy:
@@ -29,26 +29,24 @@ jobs:
 
       - name: Install Akash CLI
         run: |
-          curl -LO https://github.com/ovrclk/akash/releases/download/v0.18.2/akash_0.18.2_linux_amd64.zip
-          unzip akash_0.18.2_linux_amd64.zip
-          sudo mv akash_0.18.2_linux_amd64/akash /usr/local/bin/
+          curl -LO https://github.com/ovrclk/akash/releases/download/v0.18.0/akash_0.18.0_linux_amd64.zip
+          unzip akash_0.18.0_linux_amd64.zip
+          sudo mv akash_0.18.0_linux_amd64/akash /usr/local/bin/
           akash version
 
-      - name: Configure Wallet & Deploy
+      - name: Deploy to Akash
         env:
           AKASH_WALLET_NAME: ${{ secrets.AKASH_WALLET_NAME }}
           AKASH_WALLET_MNEMONIC: ${{ secrets.AKASH_WALLET_MNEMONIC }}
         run: |
-          # Recover wallet
           echo "$AKASH_WALLET_MNEMONIC" | akash keys add $AKASH_WALLET_NAME --recover --keyring-backend test
 
-          # Export address
-          export AKASH_ADDR=$(akash keys show $AKASH_WALLET_NAME -a --keyring-backend test)
+          # Optional: Check recovered address
+          AKASH_ADDR=$(akash keys show $AKASH_WALLET_NAME -a --keyring-backend test)
+          echo "Recovered Wallet Address: $AKASH_ADDR"
 
-          # Generate certificate (no --from here)
+          # Generate and create certificate
           akash tx cert generate --keyring-backend test
-
-          # Create certificate (needs --from)
           akash tx cert create \
             --from $AKASH_WALLET_NAME \
             --chain-id akashnet-2 \
@@ -56,10 +54,10 @@ jobs:
             --keyring-backend test \
             --yes
 
-          # Deploy
+          # Deploy to Akash
           akash tx deployment create deploy.yaml \
             --from $AKASH_WALLET_NAME \
-            --node https://rpc.akash.forbole.com:443 \
             --chain-id akashnet-2 \
+            --node https://rpc.akash.forbole.com:443 \
             --keyring-backend test \
             --yes
