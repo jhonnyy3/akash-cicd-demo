@@ -3,7 +3,7 @@ name: Build & Deploy to Akash
 on:
   push:
     branches:
-      - main  # Change to 'master' if your repo uses master
+      - main  # Change to 'master' if your default branch is master
 
 jobs:
   build-and-deploy:
@@ -34,26 +34,30 @@ jobs:
           sudo mv akash_0.18.2_linux_amd64/akash /usr/local/bin/
           akash version
 
-      - name: Deploy to Akash
+      - name: Configure Akash Wallet & Deploy
         env:
           AKASH_WALLET_NAME: ${{ secrets.AKASH_WALLET_NAME }}
           AKASH_WALLET_MNEMONIC: ${{ secrets.AKASH_WALLET_MNEMONIC }}
         run: |
-          # Recover wallet from mnemonic
+          # Recover wallet
           echo "$AKASH_WALLET_MNEMONIC" | akash keys add $AKASH_WALLET_NAME --recover --keyring-backend test
 
-          # Generate and broadcast cert
-          akash tx cert generate --from $AKASH_WALLET_NAME --chain-id akashnet-2 --keyring-backend test --yes
-          akash tx cert create --from $AKASH_WALLET_NAME --chain-id akashnet-2 --keyring-backend test --yes
+          # Set environment variables
+          export AKASH_ADDR=$(akash keys show $AKASH_WALLET_NAME -a --keyring-backend test)
 
-          # Deploy to Akash
+          # Generate and broadcast cert
+          akash tx cert generate --keyring-backend test
+          akash tx cert create \
+            --from $AKASH_WALLET_NAME \
+            --keyring-backend test \
+            --chain-id akashnet-2 \
+            --node https://rpc.akash.forbole.com:443 \
+            --yes
+
+          # Deploy
           akash tx deployment create deploy.yaml \
             --from $AKASH_WALLET_NAME \
             --node https://rpc.akash.forbole.com:443 \
             --chain-id akashnet-2 \
             --keyring-backend test \
             --yes
-
-          # Optional: view deployment info
-          echo "Deployment list:"
-          akash query deployment list --owner $(akash keys show $AKASH_WALLET_NAME -a) --node https://rpc.akash.forbole.com:443
