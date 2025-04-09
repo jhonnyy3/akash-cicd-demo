@@ -3,7 +3,7 @@ name: Build & Deploy to Akash
 on:
   push:
     branches:
-      - master  # change to 'main' if that's your default branch
+      - master  # or 'main' if that's your default branch
 
 jobs:
   build-and-deploy:
@@ -35,29 +35,28 @@ jobs:
           akash version
 
       - name: Deploy to Akash
-  env:
-    AKASH_WALLET_NAME: ${{ secrets.AKASH_WALLET_NAME }}
-    AKASH_WALLET_MNEMONIC: ${{ secrets.AKASH_WALLET_MNEMONIC }}
-  run: |
-    # Restore wallet
-    echo "$AKASH_WALLET_MNEMONIC" | akash keys restore $AKASH_WALLET_NAME
+        env:
+          AKASH_WALLET_NAME: ${{ secrets.AKASH_WALLET_NAME }}
+          AKASH_WALLET_MNEMONIC: ${{ secrets.AKASH_WALLET_MNEMONIC }}
+        run: |
+          # Restore wallet from mnemonic
+          echo "$AKASH_WALLET_MNEMONIC" | akash keys restore $AKASH_WALLET_NAME
 
-    # Optional: Check address
-    AKASH_ADDR=$(akash keys show $AKASH_WALLET_NAME -a)
-    echo "Recovered Wallet Address: $AKASH_ADDR"
+          # Check address (optional)
+          AKASH_ADDR=$(akash keys show $AKASH_WALLET_NAME -a)
+          echo "Recovered Wallet Address: $AKASH_ADDR"
 
-    # Generate and create certificate
-    akash tx cert generate
-    akash tx cert create \
-      --from $AKASH_WALLET_NAME \
-      --chain-id akashnet-2 \
-      --node https://rpc.akash.forbole.com:443 \
-      --yes
+          # Generate and create certificate
+          akash tx cert generate
+          akash tx cert create \
+            --from $AKASH_WALLET_NAME \
+            --chain-id akashnet-2 \
+            --node https://rpc.akash.forbole.com:443 \
+            --yes
 
-    # Deploy to Akash
-    akash tx deployment create deploy.yaml \
-      --from $AKASH_WALLET_NAME \
-      --chain-id akashnet-2 \
-      --node https://rpc.akash.forbole.com:443 \
-      --yes
-
+          # Deploy using deploy.yaml
+          akash tx deployment create deploy.yaml \
+            --from $AKASH_WALLET_NAME \
+            --chain-id akashnet-2 \
+            --node https://rpc.akash.forbole.com:443 \
+            --yes
