@@ -40,7 +40,12 @@ jobs:
           AKASH_WALLET_MNEMONIC: ${{ secrets.AKASH_WALLET_MNEMONIC }}
         run: |
           echo "$AKASH_WALLET_MNEMONIC" | akash keys add $AKASH_WALLET_NAME --recover --keyring-backend test
-          
+
+          # Generate and broadcast certificate
+          akash tx cert generate --from $AKASH_WALLET_NAME --chain-id akashnet-2 --keyring-backend test --yes
+          akash tx cert create --from $AKASH_WALLET_NAME --chain-id akashnet-2 --keyring-backend test --yes
+
+          # Deploy to Akash
           akash tx deployment create deploy.yaml \
             --from $AKASH_WALLET_NAME \
             --node https://rpc.akash.forbole.com:443 \
