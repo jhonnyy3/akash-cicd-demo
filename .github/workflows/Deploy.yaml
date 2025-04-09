@@ -35,29 +35,29 @@ jobs:
           akash version
 
       - name: Deploy to Akash
-        env:
-          AKASH_WALLET_NAME: ${{ secrets.AKASH_WALLET_NAME }}
-          AKASH_WALLET_MNEMONIC: ${{ secrets.AKASH_WALLET_MNEMONIC }}
-        run: |
-          echo "$AKASH_WALLET_MNEMONIC" | akash keys add $AKASH_WALLET_NAME --recover --keyring-backend test
+  env:
+    AKASH_WALLET_NAME: ${{ secrets.AKASH_WALLET_NAME }}
+    AKASH_WALLET_MNEMONIC: ${{ secrets.AKASH_WALLET_MNEMONIC }}
+  run: |
+    # Restore wallet
+    echo "$AKASH_WALLET_MNEMONIC" | akash keys restore $AKASH_WALLET_NAME
 
-          # Optional: Check recovered address
-          AKASH_ADDR=$(akash keys show $AKASH_WALLET_NAME -a --keyring-backend test)
-          echo "Recovered Wallet Address: $AKASH_ADDR"
+    # Optional: Check address
+    AKASH_ADDR=$(akash keys show $AKASH_WALLET_NAME -a)
+    echo "Recovered Wallet Address: $AKASH_ADDR"
 
-          # Generate and create certificate
-          akash tx cert generate --keyring-backend test
-          akash tx cert create \
-            --from $AKASH_WALLET_NAME \
-            --chain-id akashnet-2 \
-            --node https://rpc.akash.forbole.com:443 \
-            --keyring-backend test \
-            --yes
+    # Generate and create certificate
+    akash tx cert generate
+    akash tx cert create \
+      --from $AKASH_WALLET_NAME \
+      --chain-id akashnet-2 \
+      --node https://rpc.akash.forbole.com:443 \
+      --yes
 
-          # Deploy to Akash
-          akash tx deployment create deploy.yaml \
-            --from $AKASH_WALLET_NAME \
-            --chain-id akashnet-2 \
-            --node https://rpc.akash.forbole.com:443 \
-            --keyring-backend test \
-            --yes
+    # Deploy to Akash
+    akash tx deployment create deploy.yaml \
+      --from $AKASH_WALLET_NAME \
+      --chain-id akashnet-2 \
+      --node https://rpc.akash.forbole.com:443 \
+      --yes
+
