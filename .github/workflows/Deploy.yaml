@@ -31,7 +31,8 @@ jobs:
         run: |
           curl -LO https://github.com/ovrclk/akash/releases/download/v0.18.0/akash_0.18.0_linux_amd64.zip
           unzip akash_0.18.0_linux_amd64.zip
-          sudo mv akash /usr/local/bin/
+          sudo mv akash_0.18.0_linux_amd64/akash /usr/local/bin/
+          akash version
 
       - name: Deploy to Akash
         env:
