@@ -29,7 +29,8 @@ jobs:
 
       - name: Install Akash CLI
         run: |
-          curl -s https://raw.githubusercontent.com/ovrclk/akash/master/godownloader.sh | bash
+          curl -LO https://github.com/ovrclk/akash/releases/download/v0.18.0/akash_0.18.0_linux_amd64.zip
+          unzip akash_0.18.0_linux_amd64.zip
           sudo mv akash /usr/local/bin/
 
       - name: Deploy to Akash
