@@ -1,0 +1,41 @@
+name: CI/CD to Akash
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/akash-cicd-demo:latest .
+          docker push ${{ secrets.DOCKER_USERNAME }}/akash-cicd-demo:latest
+
+      - name: Install Akash CLI
+        run: |
+          curl -s https://raw.githubusercontent.com/akash-network/akash/master/godownloader.sh | bash
+          sudo mv ./bin/akash /usr/local/bin
+
+      - name: Deploy to Akash
+        run: |
+          echo "${{ secrets.AKASH_KEY_JSON }}" > key.json
+          echo "${{ secrets.AKASH_PASSPHRASE }}" > pass.txt
+
+          akash keys import github-akash key.json < pass.txt
+          akash tx deployment create akash.yaml --from github-akash \
+            --chain-id ${{ secrets.AKASH_CHAIN_ID }} \
+            --node ${{ secrets.AKASH_NODE }} \
+            --gas auto --gas-adjustment 1.5 --yes \
+            --keyring-backend file
+
