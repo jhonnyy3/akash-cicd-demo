@@ -3,7 +3,7 @@ name: Build & Deploy to Akash
 on:
   push:
     branches:
-      - master  # change to 'main' if that's your default branch
+      - master
 
 jobs:
   build-and-deploy:
@@ -13,50 +13,45 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Log in to Docker Hub
+      - name: Docker Login
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build Docker Image
-        run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/akash-cicd-demo:latest .
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/akash-cicd-demo:latest .
 
       - name: Push Docker Image
-        run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/akash-cicd-demo:latest
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/akash-cicd-demo:latest
 
-      - name: Install Akash CLI v0.16.5 (stable for automation)
+      - name: Install Akash CLI
         run: |
-          curl -LO https://github.com/ovrclk/akash/releases/download/v0.16.5/akash_0.16.5_linux_amd64.zip
-          unzip akash_0.16.5_linux_amd64.zip
-          sudo mv akash_0.16.5_linux_amd64/akash /usr/local/bin/
+          curl -LO https://github.com/akash-network/akash/releases/download/v0.18.0/akash_0.18.0_linux_amd64.zip
+          unzip akash_0.18.0_linux_amd64.zip
+          sudo mv akash_0.18.0_linux_amd64/akash /usr/local/bin/
           akash version
 
-      - name: Deploy to Akash
+      - name: Recover Wallet
         env:
           AKASH_WALLET_NAME: ${{ secrets.AKASH_WALLET_NAME }}
           AKASH_WALLET_MNEMONIC: ${{ secrets.AKASH_WALLET_MNEMONIC }}
         run: |
-          echo "$AKASH_WALLET_MNEMONIC" | akash keys add $AKASH_WALLET_NAME --recover --keyring-backend test
-          
-          AKASH_ADDR=$(akash keys show $AKASH_WALLET_NAME -a --keyring-backend test)
-          echo "Recovered Wallet Address: $AKASH_ADDR"
+          echo "$AKASH_WALLET_MNEMONIC" | akash keys restore $AKASH_WALLET_NAME
 
-          # Generate and create certificate
-          akash tx cert generate --keyring-backend test
+      - name: Create Certificate
+        run: |
+          akash tx cert generate
           akash tx cert create \
             --from $AKASH_WALLET_NAME \
             --chain-id akashnet-2 \
             --node https://rpc.akash.forbole.com:443 \
-            --keyring-backend test \
             --yes
 
-          # Deploy to Akash
+      - name: Deploy to Akash
+        run: |
           akash tx deployment create deploy.yaml \
             --from $AKASH_WALLET_NAME \
-            --chain-id akashnet-2 \
             --node https://rpc.akash.forbole.com:443 \
-            --keyring-backend test \
+            --chain-id akashnet-2 \
             --yes
