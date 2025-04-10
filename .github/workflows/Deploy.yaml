@@ -1,9 +1,6 @@
 name: Test Wallet Accessibility
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
@@ -12,26 +9,36 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
       - name: Install Akash CLI
         run: |
           curl https://raw.githubusercontent.com/akash-network/node/main/install.sh | sh
           echo "$HOME/bin" >> $GITHUB_PATH
+          akash version  # Verify installation
+
       - name: Verify Wallet
         env:
           AKASH_WALLET_NAME: ${{ secrets.AKASH_WALLET_NAME }}
           AKASH_WALLET_MNEMONIC: ${{ secrets.AKASH_WALLET_MNEMONIC }}
         run: |
+          echo "Wallet Name: $AKASH_WALLET_NAME"
+          echo "Mnemonic (masked): ***"  # Don’t log the full mnemonic
           if [ -z "$AKASH_WALLET_NAME" ] || [ -z "$AKASH_WALLET_MNEMONIC" ]; then
             echo "Error: AKASH_WALLET_NAME or AKASH_WALLET_MNEMONIC is not set."
             exit 1
           fi
           echo "Restoring wallet..."
-          echo "$AKASH_WALLET_MNEMONIC" | akash keys restore "$AKASH_WALLET_NAME" --keyring-backend test || {
+          echo "$AKASH_WALLET_MNEMONIC" | akash keys restore "$AKASH_WALLET_NAME" --keyring-backend test
+          if [ $? -ne 0 ]; then
             echo "Failed to restore wallet"
             exit 1
-          }
-          AKASH_ADDR=$(akash keys show "$AKASH_WALLET_NAME" -a --keyring-backend test) || {
+          fi
+          echo "Listing keys..."
+          akash keys list --keyring-backend test
+          echo "Retrieving address..."
+          AKASH_ADDR=$(akash keys show "$AKASH_WALLET_NAME" -a --keyring-backend test)
+          if [ $? -ne 0 ]; then
             echo "Failed to retrieve wallet address"
             exit 1
-          }
+          fi
           echo "Recovered Wallet Address: $AKASH_ADDR"
