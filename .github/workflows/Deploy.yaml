@@ -3,7 +3,7 @@ name: Build & Deploy to Akash
 on:
   push:
     branches:
-      - main  # Changed to 'main'—adjust if your branch is 'master'
+      - master  # or 'main' if that's your default branch
 
 jobs:
   build-and-deploy:
@@ -29,7 +29,7 @@ jobs:
 
       - name: Install Akash CLI
         run: |
-          # Use a more recent version if available
+          # Use a more recent version if available (check https://github.com/ovrclk/akash/releases)
           curl -LO https://github.com/ovrclk/akash/releases/download/v0.20.0/akash_0.20.0_linux_amd64.zip
           unzip akash_0.20.0_linux_amd64.zip
           sudo mv akash_0.20.0_linux_amd64/akash /usr/local/bin/
@@ -41,8 +41,6 @@ jobs:
           AKASH_WALLET_MNEMONIC: ${{ secrets.AKASH_WALLET_MNEMONIC }}
         run: |
           # Verify environment variables are set
-          echo "Wallet Name: $AKASH_WALLET_NAME"
-          echo "Mnemonic length (for debug, masked): $(echo -n "$AKASH_WALLET_MNEMONIC" | wc -w) words"
           if [ -z "$AKASH_WALLET_NAME" ] || [ -z "$AKASH_WALLET_MNEMONIC" ]; then
             echo "Error: AKASH_WALLET_NAME or AKASH_WALLET_MNEMONIC is not set."
             exit 1
@@ -50,18 +48,12 @@ jobs:
 
           # Restore wallet from mnemonic using test keyring backend
           echo "Restoring wallet..."
-          echo "$AKASH_WALLET_MNEMONIC" > mnemonic.txt
-          akash keys restore "$AKASH_WALLET_NAME" --keyring-backend test < mnemonic.txt
-          RESTORE_STATUS=$?
-          rm mnemonic.txt  # Clean up
-          if [ $RESTORE_STATUS -ne 0 ]; then
-            echo "Failed to restore wallet (exit code: $RESTORE_STATUS)"
+          echo "$AKASH_WALLET_MNEMONIC" | akash keys restore "$AKASH_WALLET_NAME" --keyring-backend test || {
+            echo "Failed to restore wallet"
             exit 1
-          fi
+          }
 
           # Check recovered address
-          echo "Listing keys..."
-          akash keys list --keyring-backend test
           AKASH_ADDR=$(akash keys show "$AKASH_WALLET_NAME" -a --keyring-backend test) || {
             echo "Failed to retrieve wallet address"
             exit 1
@@ -70,7 +62,7 @@ jobs:
 
           # Generate and create certificate
           echo "Generating certificate..."
-          akash tx cert generate client || {  # Added 'client' subcommand
+          akash tx cert generate || {
             echo "Failed to generate certificate"
             exit 1
           }
@@ -79,11 +71,19 @@ jobs:
             --chain-id akashnet-2 \
             --node https://rpc.akash.forbole.com:443 \
             --yes \
-            --keyring-backend test \
-            --gas auto \
-            --gas-prices 0.025uakt || {
+            --keyring-backend test || {
             echo "Failed to create certificate"
             exit 1
           }
 
-   
+          # Deploy using deploy.yaml
+          echo "Deploying to Akash..."
+          akash tx deployment create deploy.yaml \
+            --from "$AKASH_WALLET_NAME" \
+            --chain-id akashnet-2 \
+            --node https://rpc.akash.forbole.com:443 \
+            --yes \
+            --keyring-backend test || {
+            echo "Failed to deploy"
+            exit 1
+          }
