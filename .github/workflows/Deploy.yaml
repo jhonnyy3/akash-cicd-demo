@@ -86,16 +86,4 @@ jobs:
             exit 1
           }
 
-          # Deploy using deploy.yaml
-          echo "Deploying to Akash..."
-          akash tx deployment create deploy.yaml \
-            --from "$AKASH_WALLET_NAME" \
-            --chain-id akashnet-2 \
-            --node https://rpc.akash.forbole.com:443 \
-            --yes \
-            --keyring-backend test \
-            --gas auto \
-            --gas-prices 0.025uakt || {
-            echo "Failed to deploy"
-            exit 1
-          }
+   
