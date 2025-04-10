@@ -1,89 +1,37 @@
-name: Build & Deploy to Akash
+name: Test Wallet Accessibility
 
 on:
   push:
     branches:
-      - master  # or 'main' if that's your default branch
+      - main
+  workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  test-wallet:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build Docker Image
-        run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/akash-cicd-demo:latest .
-
-      - name: Push Docker Image
-        run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/akash-cicd-demo:latest
-
       - name: Install Akash CLI
         run: |
-          # Use a more recent version if available (check https://github.com/ovrclk/akash/releases)
-          curl -LO https://github.com/ovrclk/akash/releases/download/v0.20.0/akash_0.20.0_linux_amd64.zip
-          unzip akash_0.20.0_linux_amd64.zip
-          sudo mv akash_0.20.0_linux_amd64/akash /usr/local/bin/
-          akash version
-
-      - name: Deploy to Akash
+          curl https://raw.githubusercontent.com/akash-network/node/main/install.sh | sh
+          echo "$HOME/bin" >> $GITHUB_PATH
+      - name: Verify Wallet
         env:
           AKASH_WALLET_NAME: ${{ secrets.AKASH_WALLET_NAME }}
           AKASH_WALLET_MNEMONIC: ${{ secrets.AKASH_WALLET_MNEMONIC }}
         run: |
-          # Verify environment variables are set
           if [ -z "$AKASH_WALLET_NAME" ] || [ -z "$AKASH_WALLET_MNEMONIC" ]; then
             echo "Error: AKASH_WALLET_NAME or AKASH_WALLET_MNEMONIC is not set."
             exit 1
           fi
-
-          # Restore wallet from mnemonic using test keyring backend
           echo "Restoring wallet..."
           echo "$AKASH_WALLET_MNEMONIC" | akash keys restore "$AKASH_WALLET_NAME" --keyring-backend test || {
             echo "Failed to restore wallet"
             exit 1
           }
-
-          # Check recovered address
           AKASH_ADDR=$(akash keys show "$AKASH_WALLET_NAME" -a --keyring-backend test) || {
             echo "Failed to retrieve wallet address"
             exit 1
           }
           echo "Recovered Wallet Address: $AKASH_ADDR"
-
-          # Generate and create certificate
-          echo "Generating certificate..."
-          akash tx cert generate || {
-            echo "Failed to generate certificate"
-            exit 1
-          }
-          akash tx cert create \
-            --from "$AKASH_WALLET_NAME" \
-            --chain-id akashnet-2 \
-            --node https://rpc.akash.forbole.com:443 \
-            --yes \
-            --keyring-backend test || {
-            echo "Failed to create certificate"
-            exit 1
-          }
-
-          # Deploy using deploy.yaml
-          echo "Deploying to Akash..."
-          akash tx deployment create deploy.yaml \
-            --from "$AKASH_WALLET_NAME" \
-            --chain-id akashnet-2 \
-            --node https://rpc.akash.forbole.com:443 \
-            --yes \
-            --keyring-backend test || {
-            echo "Failed to deploy"
-            exit 1
-          }
